@@ -8,7 +8,7 @@ the `c++/winrt` tiny and essential
 
 1. 未实现的功能
 
-* 我们喜爱使用 `VSCode` 编码有趣的功能, 也喜爱使用 `CMake` 来构建项目. 但是目前 `VSCode` 还不支持 `Nuget` 包, 而且 `CMake` 目前也还不支持 `Nuget` 和 `CppWinRT`
+* 我们喜爱使用 `VSCode` 编码有趣的功能, 也喜爱使用 `CMake` 来构建项目. 但是目前 `VSCode` 还不支持 `Nuget` 包, 而且 `CMake` 目前也还不支持 `Nuget` 和 `CppWinRT`, 因此目前使用 `Visual Studio 2019` (社区版及以上) 构建示例和小型库
 
 2. 功能路线
 
