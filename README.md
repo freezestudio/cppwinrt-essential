@@ -18,4 +18,4 @@ the `c++/winrt` tiny and essential
 
 ## 使用文档
 
-[`C++/WinRT` 使用文档](./essential.md) 也记录使用是遇到的问题和一些技术要点及使用技巧,不定期更新
+[`C++/WinRT`文档](./essential.md) 也记录开发中遇到的问题和一些技术要点及技巧, 不定期更新
