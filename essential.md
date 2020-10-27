@@ -353,3 +353,115 @@ namespace winrt::MyProject::implementation
 `MyRuntimeClass`|`MyProject`|运行时类型, 位于 `MyRuntimeClass.idl` 文件中, 用 `IDL` 声明 `namespace MyProject{ runtimeclass MyRuntimeClass{} }`
 `MyRuntimeClass`|`winrt::MyProject::implementation`|实现类型, 位于 `MyRuntimeClass[.h|.cpp]` 文件中, 用于实现 `WinRT` 类型 `MyRuntimeClass`
 `MyRuntimeClass`|`winrt::MyProject`|投影类型, 位于 `.../winrt/impl/MyProject.2.h` 文件中, 是 `WinRT` 类型 `MyRuntimeClass` 的投影
+
+## 问题集锦
+
+### `error: MDM2009`
+
+描述:
+
+同一个解决方案:
+
+* 一个 `app` 项目 `A.app`
+* 一个 `runtime component` 项目 `B.dll`
+
+`2` 个项目都使用: `Win2D.uwp.1.25.0`, 其中 `A.app` 引用 `B.dll`
+
+编译时出错:
+
+```cmd
+重复的引用 *.winmd
+MDMERGE : error MDM2009: duplicate type error when using a grandchild reference
+```
+
+解决方法:
+
+* 方法一: (可编译通过, 是否可行未测试)
+
+  1. 先编译 B.dll
+
+  > **重要** 完成后在 `.../x64/Debug/<B>/` 目录中 删除 `Microsoft.Graphics.Canvas.winmd` 文件
+
+  2. 仅编译 A.app
+
+
+* 方法二:
+
+打开 `.../packages/Win2D.uwp.1.25.0/build/native/Win2D.uwp.targets` 文件
+
+添加：
+
+```xml
+
+<ItemDefinitionGroup>
+    <Reference>
+        <Private Condition="'$(ConfigurationType)' != 'Application'">false</Private>
+    </Reference>
+</ItemDefinitionGroup>
+```
+
+原来的内容:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <win2d-Platform Condition="'$(Platform)' == 'Win32'">x86</win2d-Platform>
+    <win2d-Platform Condition="'$(Platform)' != 'Win32'">$(Platform)</win2d-Platform>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="$(MSBuildThisFileDirectory)..\..\lib\uap10.0\Microsoft.Graphics.Canvas.winmd">
+      <Implementation>Microsoft.Graphics.Canvas.dll</Implementation>
+    </Reference>
+    <ReferenceCopyLocalPaths Include="$(MSBuildThisFileDirectory)..\..\runtimes\win10-$(win2d-Platform)\native\Microsoft.Graphics.Canvas.dll" />
+  </ItemGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)..\..\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <Import Project="$(MSBuildThisFileDirectory)..\Win2D.common.targets" />
+
+</Project>
+```
+
+修改为:
+
+```xml
+
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <win2d-Platform Condition="'$(Platform)' == 'Win32'">x86</win2d-Platform>
+    <win2d-Platform Condition="'$(Platform)' != 'Win32'">$(Platform)</win2d-Platform>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="$(MSBuildThisFileDirectory)..\..\lib\uap10.0\Microsoft.Graphics.Canvas.winmd">
+      <Implementation>Microsoft.Graphics.Canvas.dll</Implementation>
+    </Reference>
+    <ReferenceCopyLocalPaths Include="$(MSBuildThisFileDirectory)..\..\runtimes\win10-$(win2d-Platform)\native\Microsoft.Graphics.Canvas.dll" />
+  </ItemGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)..\..\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+
+    // 这里是新加的
+
+    <Reference>
+        <Private Condition="'$(ConfigurationType)' != 'Application'">false</Private>
+    </Reference>
+
+  </ItemDefinitionGroup>
+
+  <Import Project="$(MSBuildThisFileDirectory)..\Win2D.common.targets" />
+
+</Project>
+```
