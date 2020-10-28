@@ -465,3 +465,17 @@ MDMERGE : error MDM2009: duplicate type error when using a grandchild reference
 
 </Project>
 ```
+### WinRT originate error - 0x80004005 : 'Cannot find a Resource with the Name/Key TabViewButtonBackground'
+
+可能出现在使用 `WinUI 3` 的项目中
+
+解决方法:
+
+1. 当 App[.xaml|.h|.cpp|.idl] 文件不在项目根目录时会出现此错误, 把它们移到项目根目录.
+2. 如果仍然有此错误, 尝试修改项目文件, 添加以下内容:
+
+```xml
+<PropertyGroup>
+   <DisableEmbeddedXbf>true</DisableEmbeddedXbf>
+</PropertyGroup>
+```
