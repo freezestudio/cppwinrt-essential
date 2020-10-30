@@ -354,6 +354,108 @@ namespace winrt::MyProject::implementation
 `MyRuntimeClass`|`winrt::MyProject::implementation`|实现类型, 位于 `MyRuntimeClass[.h|.cpp]` 文件中, 用于实现 `WinRT` 类型 `MyRuntimeClass`
 `MyRuntimeClass`|`winrt::MyProject`|投影类型, 位于 `.../winrt/impl/MyProject.2.h` 文件中, 是 `WinRT` 类型 `MyRuntimeClass` 的投影
 
+## 自定义事件
+
+假设我们需要创建一个图像特效, 这个创建是在其它线程完成的，我们希望它在创建完成后发出通知.
+现在我们自定义此事件通知(`EffectCompletedEvent`).
+
+```cpp
+// 一个图像特效创建完成事件, 预期事件处理器带有一个 bool 类型的参数
+winrt::event<Windows::Foundation::EventHandler<bool>> EffectCompletedEvent;
+// 保存事件令牌(用于在适当的地方销毁事件)
+winrt::event_token EffectCompletedEventToken;
+```
+
+接下来, 需要实现注册和销毁此事件的接口.
+
+```cpp
+// 注册: handler 是符合 EffectCompletedEvent 要求的事件处理器(自由函数, Lambda, 成员函数或其它可调用物)
+winrt::event_token OnEffectCompleted(Windows::Foundation::EventHandler<bool> const& handler);
+// 销毁: 断开此事件的处理器
+void               OnEffectCompleted(winrt::event_token const& token) noexcept;
+```
+
+以上描述了我们想要的事件及事件处理器, 现在来实现它.
+
+```cpp
+// 注册和销毁很简单
+
+winrt::event_token OnEffectCompleted(Windows::Foundation::EventHandler<bool> const& handler)
+{
+  return EffectCompletedEvent.add(handler);
+}
+
+void OnEffectCompleted(winrt::event_token const& token) noexcept
+{
+  EffectCompletedEvent.remove(token);
+}
+
+```
+
+现在, 我们实现了一个 `EffectCompletedEvent` 事件, 是时候来使用它了.
+
+1. 事件处理器: 在事件发出之前, 必须有事件处理存在, 事件才会执行处理. 通常在类的构造函数或页面加载完成时注册好事件的处理器, 在类的析构函数或页面卸载时销毁事件处理器
+
+```cpp
+// 按照事件处理器的签名构造一个事件处理器, 这里示例一个成员函数
+// 查看 api 文档来确定事件处理器的签名, 标准签名通常是这样的
+// void handler_name(sender, event_args);
+void MainPage::EffectCompletedHandler(Windows::Foundation::IInspectable const& sender, bool v)
+{
+  ...
+}
+
+// 这里在构造函数中注册它, 在析构函数中销毁
+MainPage::MainPage()
+{
+  auto completed_handler = Windows::Foundation::EventHandler<bool>(get_weak(), &MainPage::EffectCompletedHandler);
+  EffectCompletedEventToken = OnEffectCompleted(completed_handler);
+}
+
+MainPage::~MainPage()
+{
+  OnEffectCompleted(EffectCompletedEventToken);
+}
+```
+
+不想手动销毁, 也可以利用 `winrt::event_revoker` 自动撤销事件处理器. 查看文档了解如何操作.
+
+2. 发出事件: 在需要发出此事件的地方引发此事件的执行
+
+```cpp
+// winrt::event 有一个调用操作符
+// template<typename... Args>
+// void operator()(Args const&... args);
+// 用来引发事件的执行
+
+// 发出事件
+EffectCompletedEvent(*this, true);
+```
+
+最后, 列出 `winrt::event` 结构
+
+```cpp
+template<typename Delegate>
+struct event
+{
+  // 缺省构造
+  event() = default;
+
+  // 注册委托(事件处理器)
+  event_token add(Delegate const&);
+  
+  // 撤销
+  void remove(event_token const);
+
+  // 引发事件执行
+  template<typename... Args>
+  void operator()(Args const& ...);
+
+  // 是否有事件处理器
+  explicit operator bool() const noexcept;
+};
+```
+
 ## 问题集锦
 
 ### `error: MDM2009`
