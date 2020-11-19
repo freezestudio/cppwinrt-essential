@@ -186,6 +186,29 @@ WINRT_ASSERT(piPropertyValue.Type() == winrt::Windows::Foundation::PropertyType:
   >* 投影类型 -> `WinRT` 类型的包装器
   >* 投影接口 -> `WinRT` 接口的包装器
 
+  实现与投影互相操作示例:
+
+  ```cpp
+  //
+  // winrt::make 签名:
+  // make<实现类型>() -> 投影类型(或接口)
+  // 实现类型通常位于 yournamespace::implementaion 名字空间
+  // 投影类型通常位于 yournamespace 名字空间
+  //
+  // winrt::get_self 签名:
+  // get_self<实现类型>(投影类型或接口)->指向实现类型的指针
+  //
+
+  // 1. 通过实现类型构建投影类型(或接口), projected_xxx 的类型为 yournamespace::xxx
+  auto projected_xxx = winrt::make<yournamespace::implementation::xxx>();
+
+  // 构建一个运行时类型 yournamespace::xxx 的 com_ptr 包装的实现类型 yournamespace::implementation::xxx
+  winrt::com_ptr<yournamespace::implementation::xxx> xxx_ptr = winrt::make_self<yournamespace::implementation::xxx>(...);
+
+  // 2. 通过投影类型, 查找实现类型
+  yournamespace::implementation::xxx* xxx_ptr = winrt::get_self(projected_xxx);
+  ```
+
 2. 通过对象、接口或 `ABI` 访问成员
 
   ```cpp
@@ -233,7 +256,6 @@ WINRT_ASSERT(piPropertyValue.Type() == winrt::Windows::Foundation::PropertyType:
   ```
 
 3. 延迟初始化: 投影类型都有一个使用 `std::nullptr_t` 参数的构造函数, 用于延迟构造对应的运行时类型
-
 4. `winrt::make`: 通过实现类型返回其投影接口(运行时接口的普通 `C++` 实现)或实例(运行时类及其实现类在同一编译单元)
 5. 统一构造: 需要激活工厂(生成激活工厂的好方式是向 `IDL` 添加构造函数)
 6. 投影类型可以使用 `as` 查询接口
