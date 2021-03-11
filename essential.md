@@ -132,34 +132,35 @@ void PrintFeed(SyndicationFeed const& syndicationFeed)
 
 ## 标量值装箱到 `IInspectable`
 
-* `winrt::box_value(Scale)` e.g. box_value(123) box_value(L"hello")
-* `winrt::box_value(WinRT)` e.g. box_value(event_handler)
-* 不能装箱常规 `C++` 类型 (struct, class)
+* 标量值装箱      : `winrt::box_value(Scale)` e.g. box_value(123), box_value(L"hello") 等
+* `WinRT` 类型装箱: `winrt::box_value(WinRT)` e.g. box_value(event_handler)
+* **注意**: 不能装箱常规 `C++` 类型 (struct, class)
 
-`Slider` 控件在鼠标拖动滑杆时会引发 `ValueChanged` 事件改变滑动值, 有时候我们不希望频繁地处理改变值, 而是希望当拖动结束时来处理最终值, 但是 `Slider` 控件不引发拖动结束时的鼠标释放事件. 为了捕获此事件，我们需要以代码的方式手动指定再次引发。
+示例: (Xaml) `Slider` 控件在鼠标拖动滑杆时会引发 `ValueChanged` 事件改变滑动值, 有时候我们不希望频繁地处理改变值, 而是希望当拖动结束时来处理最终值, 但是 `Slider` 控件不引发拖动结束时的鼠标释放事件. 为了捕获此事件，我们需要以代码的方式手动指定再次引发。
 
 在适当的位置手动注册鼠标释放事件, 比如在构造函数中, 或者页面装载完成时:
 
 ```cpp
-// 签名:
+// 添加处理器的方法, 签名:
 void AddHandler(Windows::UI::Xaml::RoutedEvent const& routedEvent, Windows::Foundation::IInspectable const& handler, bool handledEventsToo);
 
 // 鼠标释放事件为:
 Windows::UI::Xaml::RoutedEvent Windows::UI::Xaml::UIElement::PointerReleasedEvent();
-// 事件处理器为:
+// 事件处理器类型为:
 Windows::UI::Xaml::Input::PointerEventHandler;
 
-// AddHandler(event, handler, bool) 中, handler 要求为 IInspectable 类型, 
+// 方法 AddHandler(event, handler, bool) 中, 参数 handler 要求为 IInspectable 类型, 
 // 但是 Windows::UI::Xaml::Input::PointerEventHandler 并没有从 IInspectable 接口派生, 
-// 为了适应 AddHandler 方法的要求, 需要使用 winrt::box_value 包装 handler, 
-// 即: winrt::box_value<Windows::UI::Xaml::Input::PointerEventHandler>(handler)
+// 为了适应 AddHandler(..., handler, ...) 方法的参数类型要求, 需要使用 winrt::box_value 包装 handler 参数, 
+// 使得 handler 类型装箱为 IInspectable 类型
+// 即: winrt::box_value<Windows::UI::Xaml::Input::PointerEventHandler>(handler) -> IInspectable
 
 // 因此, Slider 控件鼠标释放事件手动注册如下:
 
 // 添加事件处理器, 并再次启用该事件
 auto pointerReleasedEvent = UIElement::PointerReleasedEvent();
-auto handler = Input::PointerEventHandler(this, &MainPage::UsmSlider_PointerReleased);
-UsmSlider().AddHandler(pointerReleasedEvent, winrt::box_value(handler), true);
+auto handler = Input::PointerEventHandler(this, &MainPage::Slider_PointerReleased);
+Slider().AddHandler(pointerReleasedEvent, winrt::box_value(handler), true);
 ```
 
 ### 确定装箱值的类型
@@ -171,7 +172,7 @@ auto piPropertyValue = piInspectable.as<winrt::Windows::Foundation::IPropertyVal
 WINRT_ASSERT(piPropertyValue.Type() == winrt::Windows::Foundation::PropertyType::Single);
 ```
 
-## 使用 `C++/WinRT` 操作运行时 `API`
+## 使用 `C++/WinRT` 操作运行时 `ABI`
 
 1. `Windows` 运行时 `api` 大多位于 `Windows::..`. 和 `Microsoft::...` 命名空间
 `C++/WinRT` 生成对应的等效友好投影类型(位于 `winrt/` 文件夹下)
@@ -190,7 +191,7 @@ WINRT_ASSERT(piPropertyValue.Type() == winrt::Windows::Foundation::PropertyType:
 
       // 投影类型: 其值可以视为 WinRT 的实例
       // 以下为 winrt::Windows::Foundation::Uri 投影类型
-      // 类型值 contosoUri, combinedUri 可以视为 Windows::Foundation::Uri 的实例
+      // 类型值 contosoUri, combinedUri 可以视为(ABI) Windows::Foundation::Uri 的实例
 
       Uri contosoUri{ L"http://www.contoso.com" };
       Uri combinedUri = contosoUri.CombineUri(L"products");
@@ -208,20 +209,20 @@ WINRT_ASSERT(piPropertyValue.Type() == winrt::Windows::Foundation::PropertyType:
   // winrt::make 签名:
   // make<实现类型>() -> 投影类型(或接口)
   // 实现类型通常位于 yournamespace::implementaion 名字空间
-  // 投影类型通常位于 yournamespace 名字空间
+  // 投影类型通常位于 yournamespace                名字空间
   //
   // winrt::get_self 签名:
   // get_self<实现类型>(投影类型或接口)->指向实现类型的指针
   //
 
-  // 1. 通过实现类型构建投影类型(或接口), projected_xxx 的类型为 yournamespace::xxx
-  auto projected_xxx = winrt::make<yournamespace::implementation::xxx>();
+  // 1. 通过实现类型构建投影类型(或接口), projected_T 的类型为 yournamespace::T
+  auto projected_T = winrt::make<yournamespace::implementation::T>();
 
-  // 构建一个运行时类型 yournamespace::xxx 的 com_ptr 包装的实现类型 yournamespace::implementation::xxx
-  winrt::com_ptr<yournamespace::implementation::xxx> xxx_ptr = winrt::make_self<yournamespace::implementation::xxx>(...);
+  // 构建一个运行时类型 yournamespace::T 的 com_ptr 包装的实现类型 yournamespace::implementation::T (接口指针)
+  winrt::com_ptr<yournamespace::implementation::T> T_ptr = winrt::make_self<yournamespace::implementation::T>(...);
 
   // 2. 通过投影类型, 查找实现类型
-  yournamespace::implementation::xxx* xxx_ptr = winrt::get_self(projected_xxx);
+  yournamespace::implementation::T* T_ptr = winrt::get_self(projected_T);
   ```
 
 2. 通过对象、接口或 `ABI` 访问成员
@@ -606,6 +607,7 @@ MDMERGE : error MDM2009: duplicate type error when using a grandchild reference
 
 </Project>
 ```
+
 ### WinRT originate error - 0x80004005 : 'Cannot find a Resource with the Name/Key TabViewButtonBackground'
 
 可能出现在使用 `WinUI 3` 的项目中
