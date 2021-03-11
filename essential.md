@@ -12,6 +12,21 @@
 `C++/WinRT`| `Windows` 运行时的投影(接口和类型)
 投影类型| `C++/WinRT` 是 `WinRT` 类型(和接口)的包装, 相当于智能指针
 实现类型| 实现一个 `Windows` 运行时类型. 可以使用多种语言来实现一个 `WinRT` 类型, 这里使用 `C++/WinRT` 来实现一个 `WinRT` 类型. 不能直接分配一个实现类型, 可以使用 `winrt::make` 获取(实例或接口), 可以使用 `winrt::make_self` 获取一个 `winrt::com_ptr` 包装的实现类型, 可以使用 `winrt::get_self` 从接口返回实现类型.
+敏捷对象| `AgileObject`, `COM` 环境中使用 `ThreadingModel = Both` 注册的类, 继承了 `IAgileObject` 接口.
+
+> __说明__
+>  -- 敏捷对象说明:
+>
+> 敏捷对象是实现了 `IAgileObject` 接口的对象, `IAgileObject` 继承自 `IUnknown`, 本身只是一个标记接口(空的, 没有自己的方法), 它说明对象是线程安全的, 也可以跨单元边界传送数据. 因此在 COM 中必须使用 `ThreadingModel = Both` 注册. 可以使用如下方法判断对象是否为敏捷的:
+>
+> ```cpp
+> template<typename T>
+> bool is_agile(T&& obj)
+> {
+>     winrt::com_ptr<IAgileObject> _agile{obj.try_as<IAgileObject>()};
+>     return !!_agile;
+> }
+> ```
 
 ## `winrt::hstring` 字符串类型
 
